@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using InstaSharper.Classes;
 using InstaSharper.Classes.Android.DeviceInfo;
+using InstaSharper.Classes.ResponseWrappers;
 using InstaSharper.Logger;
 
 namespace InstaSharper.API.Builder
@@ -150,6 +153,64 @@ namespace InstaSharper.API.Builder
         public static IInstaApiBuilder CreateBuilder()
         {
             return new InstaApiBuilder();
+        }
+
+        /// <summary>
+        ///     Create new API instance
+        /// </summary>
+        /// <param name="user">User info</param>
+        /// <param name="device">Device info</param>
+        /// <param name="requestMessage">Request message</param>
+        /// <param name="twoFactorInfo">TwoFactor info</param>
+        /// <param name="challengeInfo">Challenge info</param>
+        /// <param name="requestCookies">Key/Value pair of request cookies</param>
+        /// <returns>API instance</returns>
+        /// <exception cref="ArgumentNullException">User auth data must be specified</exception>
+        public IInstaApi Build(UserSessionData user,
+                               AndroidDevice device = null,
+                               ApiRequestMessage requestMessage = null,
+                               TwoFactorLoginInfo twoFactorInfo = null,
+                               InstaChallenge challengeInfo = null,
+                               Dictionary<string, string> requestCookies = null)
+        {
+            if (user == null)
+                throw new ArgumentNullException($"User auth data must be specified");
+            if (_httpClient == null)
+                _httpClient = new HttpClient(_httpHandler) { BaseAddress = new Uri(InstaApiConstants.INSTAGRAM_URL) };
+
+            if (requestMessage == null)
+            {
+                device = AndroidDeviceGenerator.GetRandomAndroidDevice();
+                requestMessage = new ApiRequestMessage
+                {
+                    phone_id = device.PhoneGuid.ToString(),
+                    guid = device.DeviceGuid,
+                    password = user?.Password,
+                    username = user?.UserName,
+                    device_id = ApiRequestMessage.GenerateDeviceId()
+                };
+            }
+
+            if (string.IsNullOrEmpty(requestMessage.password))
+                requestMessage.password = user?.Password;
+            if (string.IsNullOrEmpty(requestMessage.username))
+                requestMessage.username = user?.UserName;
+            if (device == null && !string.IsNullOrEmpty(requestMessage.device_id))
+                device = AndroidDeviceGenerator.GetById(requestMessage.device_id);
+            if (device == null)
+                device = AndroidDeviceGenerator.GetRandomAndroidDevice();
+
+            IHttpRequestProcessor httpRequestProcessor = new HttpRequestProcessor(_delay, _httpClient, _httpHandler, requestMessage, _logger);
+
+            if (requestCookies != null)
+            {
+                foreach (KeyValuePair<string, string> entry in requestCookies)
+                {
+                    httpRequestProcessor.HttpHandler.CookieContainer.Add(new Cookie(entry.Key, entry.Value, "/", ".instagram.com"));
+                }
+            }
+
+            return new InstaApi(user, _logger, device, httpRequestProcessor, twoFactorInfo, challengeInfo);
         }
     }
 }

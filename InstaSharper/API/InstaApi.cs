@@ -17,7 +17,7 @@ using Newtonsoft.Json;
 
 namespace InstaSharper.API
 {
-    internal class InstaApi : IInstaApi
+    public class InstaApi : IInstaApi
     {
         private readonly IHttpRequestProcessor _httpRequestProcessor;
         private readonly IInstaLogger _logger;
@@ -1373,5 +1373,65 @@ namespace InstaSharper.API
         }
 
         #endregion
+
+        public InstaApi(UserSessionData user,
+                IInstaLogger logger,
+                AndroidDevice device,
+                IHttpRequestProcessor httpRequestProcessor,
+                TwoFactorLoginInfo twoFactorInfo = null,
+                InstaChallenge challengeInfo = null)
+        {
+            _user = user;
+            _logger = logger;
+            _deviceInfo = device;
+            _httpRequestProcessor = httpRequestProcessor;
+            if (twoFactorInfo != null)
+                _twoFactorInfo = twoFactorInfo;
+            if (challengeInfo != null)
+                _challengeInfo = challengeInfo;
+        }
+
+        public void LoginUsingStoredData()
+        {
+            IsUserAuthenticated = _user.UserName.ToLower() == _httpRequestProcessor.RequestMessage.username.ToLower();
+            if (IsUserAuthenticated)
+            {
+                InvalidateProcessors();
+            }
+        }
+
+        public async Task<IResult<InstaChallenge>> GetInstaChallengeAsync()
+        {
+            return await Task.Run(() =>
+                _challengeInfo != null
+                    ? Result.Success(_challengeInfo)
+                    : Result.Fail<InstaChallenge>("No Challenge info available."));
+        }
+
+        public AndroidDevice GetDevice()
+        {
+            return _deviceInfo;
+        }
+
+        public UserSessionData GetUserSessionData()
+        {
+            return _user;
+        }
+
+        public ApiRequestMessage GetApiRequestMessage()
+        {
+            return _httpRequestProcessor.RequestMessage;
+        }
+
+        public Dictionary<string, string> GetRequestCookies()
+        {
+            Dictionary<string, string> cDictionary = new Dictionary<string, string>();
+            var cookies = _httpRequestProcessor.HttpHandler.CookieContainer.GetCookies(_httpRequestProcessor.Client.BaseAddress);
+            for (int i = 0; i < cookies.Count; i++)
+            {
+                cDictionary.Add(cookies[i].Name, cookies[i].Value);
+            }
+            return cDictionary;
+        }
     }
 }

@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Net.Http;
 using InstaSharper.Classes;
 using InstaSharper.Classes.Android.DeviceInfo;
+using InstaSharper.Classes.ResponseWrappers;
 using InstaSharper.Logger;
 
 namespace InstaSharper.API.Builder
@@ -56,5 +58,22 @@ namespace InstaSharper.API.Builder
         /// <param name="delay">Timespan delay</param>
         /// <returns>API Builder</returns>
         IInstaApiBuilder SetRequestDelay(IRequestDelay delay);
+
+        /// <summary>
+        ///     Create new API instance
+        /// </summary>
+        /// <param name="user">User info</param>
+        /// <param name="device">Device info</param>
+        /// <param name="requestMessage">Request message</param>
+        /// <param name="twoFactorInfo">TwoFactor info</param>
+        /// <param name="challengeInfo">Challenge info</param>
+        /// <param name="requestCookies">Key/Value pair of request cookies</param>
+        /// <returns>API instance</returns>
+        IInstaApi Build(UserSessionData user,
+                         AndroidDevice device = null,
+                         ApiRequestMessage requestMessage = null,
+                         TwoFactorLoginInfo twoFactorInfo = null,
+                         InstaChallenge challengeInfo = null,
+                         Dictionary<string, string> requestCookies = null);
     }
 }
